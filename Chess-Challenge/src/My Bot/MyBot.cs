@@ -11,9 +11,17 @@ public class MyBot : IChessBot
         White = board.IsWhiteToMove;
         Move res;
         if (White)
-            return max_fct(board, int.MinValue, int.MaxValue, 0).Key;
+            res = max_fct(board, int.MinValue, int.MaxValue, 0).Key;
+        else
+            res = min_fct(board, int.MinValue, int.MaxValue, 0).Key;
 
-        res = min_fct(board, int.MinValue, int.MaxValue, 0).Key;
+        if (res.IsNull)
+        {
+            dynamic allMoves = board.GetLegalMoves();
+            Random rng = new();
+            return allMoves[rng.Next(allMoves.Length)];
+        }
+
         return res;
     }
 
@@ -93,6 +101,8 @@ public class MyBot : IChessBot
             eval += GetPieceEvalFromPieceList(p) * p.Count * (p.IsWhitePieceList ? 1: -1);
         }
 
+        eval += GetPieceEvalFromActivity(board);
+
         return eval;
     }
 
@@ -106,17 +116,27 @@ public class MyBot : IChessBot
         switch (p.TypeOfPieceInList)
         {
             case PieceType.Pawn:
-                return 1;
+                return 100;
             case PieceType.Knight:
-                return 3;
+                return 300;
             case PieceType.Bishop:
-                return 3;
+                return 300;
             case PieceType.Rook:
-                return 5;
+                return 500;
             case PieceType.Queen:
-                return 10;
+                return 1000;
             default: return 0;
         }
+    }
+    int GetPieceEvalFromActivity(Board board)
+    {
+       int eval = board.GetLegalMoves().Length * (board.IsWhiteToMove ? 1 : -1);
+       if(board.TrySkipTurn())
+       {
+            eval += board.GetLegalMoves().Length * (board.IsWhiteToMove ? 1 : -1);
+            board.UndoSkipTurn();
+       }
+       return eval;
     }
 
 }
