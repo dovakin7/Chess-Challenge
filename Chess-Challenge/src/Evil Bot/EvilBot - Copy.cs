@@ -3,34 +3,30 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public class EvilBot : IChessBot
+public class EvilBotOnlyCapture : IChessBot
 {
     bool White;
-    Timer t;
     public Move Think(Board board, Timer timer)
     {
         White = board.IsWhiteToMove;
-        t = timer;
         Move res;
         if (White)
             res = max_fct(board, int.MinValue, int.MaxValue, 0).Key;
         else
             res = min_fct(board, int.MinValue, int.MaxValue, 0).Key;
-
-        if (res.IsNull)
+        if(res.IsNull)
         {
             dynamic allMoves = board.GetLegalMoves();
             Random rng = new();
             return allMoves[rng.Next(allMoves.Length)];
         }
-
         return res;
     }
 
     KeyValuePair<Move, int> min_fct(Board board, int alpha, int beta, int depth)
     {
         depth++;
-        if (EndBranchSearch(board, depth))
+        if(EndBranchSearch(board, depth))
         {
             return new KeyValuePair<Move, int>(default, GetBoardEval(board));
         }
@@ -62,7 +58,7 @@ public class EvilBot : IChessBot
         {
             return new KeyValuePair<Move, int>(default, GetBoardEval(board));
         }
-        // int u = int.MinValue;
+       // int u = int.MinValue;
         Move m = default;
         int u = int.MinValue;
         foreach (Move move in board.GetLegalMoves())
@@ -87,56 +83,46 @@ public class EvilBot : IChessBot
     int GetBoardEval(Board board)
     {
         int eval = 0;
-        if (board.IsInCheckmate())
+        if(board.IsInCheckmate())
         {
             if (board.SquareIsAttackedByOpponent(board.GetKingSquare(true)))
                 return int.MinValue;
             return int.MaxValue;
         }
         if (board.IsDraw())
+        {
             return 0;
+        }
 
         foreach (PieceList p in board.GetAllPieceLists())
         {
-            eval += GetPieceEvalFromPieceList(p) * p.Count * (p.IsWhitePieceList ? 1 : -1);
+            eval += GetPieceEvalFromPieceList(p) * p.Count * (p.IsWhitePieceList ? 1: -1);
         }
-
-        eval += GetPieceEvalFromActivity(board);
 
         return eval;
     }
 
-    bool EndBranchSearch(Board board, int curDepth)
+    bool EndBranchSearch(Board board, int curDepth) 
     {
         return board.IsDraw() || board.IsInCheckmate() || curDepth > 4;
     }
 
-    int GetPieceEvalFromPieceList(PieceList p)
+    int GetPieceEvalFromPieceList(PieceList p) 
     {
         switch (p.TypeOfPieceInList)
         {
             case PieceType.Pawn:
-                return 100;
+                return 1;
             case PieceType.Knight:
-                return 300;
+                return 3;
             case PieceType.Bishop:
-                return 300;
+                return 3;
             case PieceType.Rook:
-                return 500;
+                return 5;
             case PieceType.Queen:
-                return 1000;
+                return 10;
             default: return 0;
         }
-    }
-    int GetPieceEvalFromActivity(Board board)
-    {
-        int eval = board.GetLegalMoves().Length * (board.IsWhiteToMove ? 1 : -1);
-        if (board.TrySkipTurn())
-        {
-            eval += board.GetLegalMoves().Length * (board.IsWhiteToMove ? 1 : -1);
-            board.UndoSkipTurn();
-        }
-        return eval;
     }
 
 }
