@@ -1,68 +1,66 @@
 ﻿using ChessChallenge.API;
+//using ChessChallenge.Chess;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+// Iterative deepening
 public class MyBot : IChessBot
 {
     bool White;
     Dictionary<ulong, int> TranspositionTable;
-    int alpha;
-    int beta;
     int maxDepth;
+    int curDepth;
     Timer t;
+    readonly Random rng = new();
     public Move Think(Board board, Timer timer)
     {
         t = timer;
         TranspositionTable = new();
         White = board.IsWhiteToMove;
-        Move res = default;
-        KeyValuePair<Move, int> LastBestMove = default;
-        KeyValuePair<Move, int> BestMove = default;
+        
+        Move BestMove;
 
-        alpha = int.MinValue;
-        beta = int.MaxValue;
-        maxDepth = 4;
+        BestMove = IterativeDeepeningSearch(board);
 
-    //    while (StillInTime(timer))
-       // {
-            LastBestMove = BestMove;
+        TranspositionTable.Clear();
+        TranspositionTable.TrimExcess();
+        return BestMove;
+    }
 
+    Move IterativeDeepeningSearch(Board board)
+    {
+        maxDepth = 2;
+        KeyValuePair<Move, int> BestMove = default; ;
+        while(StillInTime())
+        {
+            curDepth = 0;
             if (White)
                 BestMove = Max_fct(board, -10000000, 10000000, 0);
             else
                 BestMove = Min_fct(board, -10000000, 10000000, 0);
-        //maxDepth += 2;
-        // }
-        //if (White)
-        //    BestMove = BestMove.Value > LastBestMove.Value ? BestMove : LastBestMove;
-        //else
-        //    BestMove = BestMove.Value < LastBestMove.Value ? BestMove : LastBestMove;
 
-        //res = LastBestMove.Key;
-        res = BestMove.Key;
-        if (res.IsNull)
+            if(Math.Abs(BestMove.Value) == 10000000)
+                break;
+            maxDepth += 2;
+        }
+        if (BestMove.Key.IsNull)
         {
             Console.WriteLine("oups");
 
             dynamic allMoves = board.GetLegalMoves();
-            Random rng = new();
             return allMoves[rng.Next(allMoves.Length)];
         }
         Console.WriteLine("Depth reach " + maxDepth);
         Console.WriteLine("cur eval" + GetBoardEval(board));
         Console.WriteLine("eval" + BestMove.Value);
 
-        TranspositionTable.Clear();
-        TranspositionTable.TrimExcess();
-        return res;
+        return BestMove.Key;
     }
 
-    bool StillInTime(Timer timer)
+    bool StillInTime()
     {
-        int maxtime = timer.MillisecondsRemaining / 100;
-        return timer.MillisecondsElapsedThisTurn < maxtime;
+        return t.MillisecondsElapsedThisTurn < t.MillisecondsRemaining / 1000;
     }
 
     KeyValuePair<Move, int> Min_fct(Board board, int alpha, int beta, int depth)
@@ -97,8 +95,6 @@ public class MyBot : IChessBot
         return new KeyValuePair<Move, int>(BestMove, MinEval);
     }
     KeyValuePair<Move, int> Max_fct(Board board, int alpha, int beta, int depth)
-
-   // KeyValuePair<Move, int> max_fct(Board board, int depth)
     {
         depth++;
         if (EndBranchSearch(board, depth))
@@ -167,10 +163,10 @@ public class MyBot : IChessBot
         return eval;
     }
 
+    //The further a pawn is on the board, the more it's worth
     int PawnPositionEval(PieceList p)
     {
         int eval = 0;
-        int goalSquare = p.IsWhitePieceList ? 7 : 0;
         foreach (Piece pawn in p)
         {
             if (p.IsWhitePieceList)
@@ -183,7 +179,7 @@ public class MyBot : IChessBot
 
     bool EndBranchSearch(Board board, int curDepth) 
     {
-        return board.IsDraw() || board.IsInCheckmate() || curDepth > maxDepth /*|| !StillInTime(t)*/;
+        return board.IsDraw() || board.IsInCheckmate() || curDepth > maxDepth;
     }
 
     int GetPieceEvalFromPieceList(PieceList p) 
@@ -203,6 +199,7 @@ public class MyBot : IChessBot
             default: return 0;
         }
     }
+    //The more move a player has, the better the eval
     int GetPieceEvalFromActivity(Board board)
     {
        int eval = board.GetLegalMoves().Length * (board.IsWhiteToMove ? 1 : -1) * 3;
